@@ -1,7 +1,1 @@
-{
-  "version": 2,
-  "rewrites": [
-    { "source": "/api/stock", "destination": "/api/stock.py" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
+{ "version": 2 }
