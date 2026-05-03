@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Valuation Terminal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #08090d; --bg2: #0e1018; --bg3: #13151f;
+  --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.12);
+  --text: #dde1ec; --muted: #4a5068; --muted2: #6b7490;
+  --accent: #4f7cff; --green: #3ecf8e; --red: #f05252;
+  --mono: 'Courier New', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text); font-family: -apple-system, 'Apple SD Gothic Neo', sans-serif; min-height: 100vh; }
+
+header {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 24px; border-bottom: 1px solid var(--border);
+  background: var(--bg2); position: sticky; top: 0; z-index: 100;
+}
+.logo {
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  color: var(--accent); border: 1px solid rgba(79,124,255,0.35);
+  padding: 5px 10px; border-radius: 4px; letter-spacing: 0.12em;
+}
+.header-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-left: auto; letter-spacing: 0.15em; }
+
+.search-section { padding: 28px 24px 0; }
+.search-row { display: flex; gap: 8px; max-width: 560px; }
+.search-input {
+  flex: 1; padding: 12px 16px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 6px; color: var(--text);
+  font-family: var(--mono); font-size: 13px; outline: none;
+  transition: border-color 0.15s;
+}
+.search-input:focus { border-color: var(--accent); }
+.search-input::placeholder { color: var(--muted); }
+.search-btn {
+  padding: 12px 22px; background: var(--accent);
+  border: none; border-radius: 6px; color: #fff;
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  letter-spacing: 0.08em; cursor: pointer; white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.search-btn:hover { opacity: 0.85; }
+.search-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.hint { margin-top: 7px; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+main { padding: 24px; }
+.status { padding: 48px 0; text-align: center; font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: 0.1em; }
+.icon { font-size: 32px; margin-bottom: 12px; opacity: 0.2; }
+.spinner {
+  display: inline-block; width: 28px; height: 28px;
+  border: 2px solid var(--border2); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.err { color: var(--red); }
+
+/* Company Card */
+.company-card {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; gap: 14px;
+  padding: 20px; background: var(--bg3);
+  border: 1px solid var(--border2); border-radius: 8px; margin-bottom: 20px;
+  animation: up 0.3s ease;
+}
+@keyframes up { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+.company-name { font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag {
+  font-family: var(--mono); font-size: 10px;
+  padding: 2px 8px; border-radius: 3px; border: 1px solid;
+  letter-spacing: 0.08em;
+}
+.tag-b { color: var(--accent); border-color: rgba(79,124,255,0.35); background: rgba(79,124,255,0.08); }
+.tag-g { color: var(--green); border-color: rgba(62,207,142,0.3); background: rgba(62,207,142,0.06); }
+.tag-p { color: #a78bfa; border-color: rgba(167,139,250,0.3); background: rgba(167,139,250,0.06); }
+.price-block { text-align: right; }
+.price-val { font-family: var(--mono); font-size: 24px; font-weight: 600; color: var(--accent); }
+.price-cap { font-family: var(--mono); font-size: 11px; color: var(--muted2); margin-top: 3px; }
+
+/* Summary grid */
+.summary-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px; margin-bottom: 22px;
+}
+.s-item {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 6px; padding: 12px 14px; animation: up 0.3s ease;
+}
+.s-label { font-family: var(--mono); font-size: 10px; color: var(--muted2); letter-spacing: 0.1em; margin-bottom: 5px; }
+.s-val { font-family: var(--mono); font-size: 17px; font-weight: 600; }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+.tab {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+  padding: 6px 14px; border-radius: 4px; cursor: pointer;
+  border: 1px solid transparent; background: transparent; color: var(--muted2);
+  transition: all 0.15s;
+}
+.tab.on { background: rgba(79,124,255,0.15); border-color: rgba(79,124,255,0.4); color: var(--accent); }
+
+/* Metric filter */
+.mfilter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+.mf {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+  padding: 4px 12px; border-radius: 20px; cursor: pointer;
+  border: 1px solid var(--border); background: transparent; color: var(--muted2);
+  transition: all 0.12s; font-weight: 600;
+}
+
+/* Charts */
+.charts-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px; margin-bottom: 22px;
+}
+.chart-card {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 8px; padding: 18px; animation: up 0.3s ease;
+}
+.cc-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
+.cc-metric { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; }
+.cc-latest { font-family: var(--mono); font-size: 13px; font-weight: 700; }
+.cc-desc { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 14px; }
+.canvas-wrap { position: relative; height: 150px; }
+
+/* Table */
+.tbl-section {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden; animation: up 0.3s ease;
+}
+.tbl-head {
+  padding: 11px 18px; border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-size: 10px; color: var(--muted2);
+  letter-spacing: 0.15em; display: flex; justify-content: space-between;
+}
+.tbl-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+th {
+  padding: 9px 14px; text-align: right; font-size: 10px;
+  color: var(--muted2); font-weight: 500; letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+th:first-child { text-align: left; }
+td {
+  padding: 8px 14px; text-align: right; color: var(--muted2);
+  border-bottom: 1px solid rgba(255,255,255,0.03); white-space: nowrap;
+}
+td:first-child { text-align: left; color: var(--accent); font-weight: 600; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.02); }
+
+@media (max-width: 600px) {
+  header, .search-section, main { padding-left: 14px; padding-right: 14px; }
+  .charts-grid { grid-template-columns: 1fr; }
+  .price-val { font-size: 18px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">VAL/TERM</span>
+  <span style="font-size:12px;color:var(--muted2)">펀더멘탈 분석</span>
+  <span class="header-sub">FMP LIVE DATA</span>
+</header>
+
+<div class="search-section">
+  <div class="search-row">
+    <input class="search-input" id="qi" placeholder="종목명·티커 (삼성전자 / AAPL / 005930)" />
+    <button class="search-btn" id="sb" onclick="go()">분석</button>
+  </div>
+  <p class="hint">— 한국: 005930.KS · 해외: AAPL · 이름으로도 검색 가능 —</p>
+</div>
+
+<main id="main">
+  <div class="status"><div class="icon">▣</div>종목을 검색하면 실제 데이터를 가져옵니다</div>
+</main>
+
+<script>
+const METRICS = [
+  { key:"per", label:"PER", color:"#4f7cff", desc:"주가수익비율" },
+  { key:"pbr", label:"PBR", color:"#3ecf8e", desc:"주가순자산비율" },
+  { key:"psr", label:"PSR", color:"#f472b6", desc:"주가매출비율" },
+  { key:"roe", label:"ROE", color:"#f5c842", desc:"자기자본이익률 (%)" },
+  { key:"peg", label:"PEG", color:"#a78bfa", desc:"PEG 비율" },
+  { key:"dcf", label:"DCF", color:"#fb923c", desc:"내재가치" },
+];
+let active = new Set(["per","pbr","roe"]);
+let data = null, period = "annual", charts = {};
+
+document.getElementById("qi").addEventListener("keydown", e => { if(e.key==="Enter") go(); });
+
+async function go() {
+  const q = document.getElementById("qi").value.trim();
+  if (!q) return;
+  const btn = document.getElementById("sb");
+  btn.disabled = true; btn.textContent = "수집중...";
+  setMain(`<div class="status"><div class="spinner"></div><br>데이터 수집 중...</div>`);
+  try {
+    const res = await fetch(`/api/stock?q=${encodeURIComponent(q)}`);
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+    data = d; period = "annual";
+    render();
+  } catch(e) {
+    setMain(`<div class="status err">⚠ ${e.message}</div>`);
+  } finally {
+    btn.disabled = false; btn.textContent = "분석";
+  }
+}
+
+function setMain(h) { document.getElementById("main").innerHTML = h; destroyCharts(); }
+function destroyCharts() { Object.values(charts).forEach(c=>c.destroy()); charts={}; }
+
+function render() {
+  if (!data) return;
+  const d = data, s = d.summary||{};
+  const cd = d[period]||[];
+  destroyCharts();
+
+  const summaryMetrics = METRICS.filter(m => s[m.key]!=null);
+  const summaryHTML = summaryMetrics.map(m=>`
+    <div class="s-item">
+      <div class="s-label">${m.label}</div>
+      <div class="s-val" style="color:${m.color}">${s[m.key]?.toLocaleString()??'—'}</div>
+    </div>`).join('');
+
+  document.getElementById("main").innerHTML = `
+  <div class="company-card">
+    <div>
+      <div class="company-name">${d.company}</div>
+      <div class="tags">
+        <span class="tag tag-b">${d.ticker}</span>
+        <span class="tag tag-g">${d.market}</span>
+        ${s.sector?`<span class="tag tag-p">${s.sector}</span>`:''}
+      </div>
+    </div>
+    <div class="price-block">
+      <div class="price-val">${s.currentPrice?.toLocaleString()??'—'}</div>
+      <div class="price-cap">${s.marketCap||''}</div>
+    </div>
+  </div>
+  ${summaryHTML?`<div class="summary-grid">${summaryHTML}</div>`:''}
+  <div class="tabs">
+    <button class="tab ${period==='annual'?'on':''}" onclick="setPeriod('annual')">연간 ANNUAL</button>
+    <button class="tab ${period==='quarterly'?'on':''}" onclick="setPeriod('quarterly')">분기 QUARTERLY</button>
+  </div>
+  <div class="mfilter">
+    ${METRICS.map(m=>`<button class="mf" id="mf_${m.key}"
+      style="${active.has(m.key)?`border-color:${m.color}50;color:${m.color};background:${m.color}12`:''}"
+      onclick="toggleM('${m.key}')">${m.label}</button>`).join('')}
+  </div>
+  <div class="charts-grid" id="cg">
+    ${METRICS.filter(m=>active.has(m.key)).map(m=>`
+      <div class="chart-card">
+        <div class="cc-head">
+          <span class="cc-metric" style="color:${m.color}">${m.label}</span>
+          <span class="cc-latest" style="color:${m.color}" id="cl_${m.key}">—</span>
+        </div>
+        <div class="cc-desc">${m.desc}</div>
+        <div class="canvas-wrap"><canvas id="cv_${m.key}"></canvas></div>
+      </div>`).join('')}
+  </div>
+  <div class="tbl-section">
+    <div class="tbl-head"><span>RAW DATA</span><span style="color:var(--muted)">${cd.length} 기간</span></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>기간</th>${METRICS.map(m=>`<th style="color:${m.color}">${m.label}</th>`).join('')}</tr></thead>
+        <tbody>${cd.map(row=>`<tr><td>${row.period}</td>${METRICS.map(m=>`<td>${row[m.key]!=null?row[m.key].toLocaleString():'<span style="color:var(--muted)">—</span>'}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>`;
+
+  METRICS.filter(m=>active.has(m.key)).forEach(m=>drawChart(m,cd));
+}
+
+function drawChart(m, cd) {
+  const canvas = document.getElementById(`cv_${m.key}`);
+  if (!canvas) return;
+  const vals = cd.map(r=>r[m.key]);
+  const latest = vals.filter(v=>v!=null).at(-1);
+  const el = document.getElementById(`cl_${m.key}`);
+  if (el && latest!=null) el.textContent = latest.toLocaleString();
+  if (charts[m.key]) charts[m.key].destroy();
+  charts[m.key] = new Chart(canvas.getContext('2d'), {
+    type:'line',
+    data:{
+      labels: cd.map(r=>r.period),
+      datasets:[{
+        data: vals,
+        borderColor: m.color, backgroundColor: m.color+'18',
+        borderWidth: 2, pointRadius: 3, pointBackgroundColor: m.color,
+        fill: true, tension: 0.35, spanGaps: false,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      animation:{duration:400},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#13151f', borderColor:'rgba(255,255,255,0.1)', borderWidth:1,
+          titleColor:'#9aa3c0', bodyColor:m.color,
+          titleFont:{family:'Courier New'}, bodyFont:{family:'Courier New',size:13,weight:'600'},
+          callbacks:{label:ctx=>ctx.parsed.y!=null?ctx.parsed.y.toLocaleString():'N/A'}
+        }
+      },
+      scales:{
+        x:{ticks:{color:'#4a5068',font:{size:10},maxRotation:45},grid:{color:'rgba(255,255,255,0.03)'}},
+        y:{ticks:{color:'#4a5068',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}
+      }
+    }
+  });
+}
+
+function setPeriod(p) { period=p; render(); }
+function toggleM(key) {
+  if(active.has(key)) active.delete(key); else active.add(key);
+  render();
+}
+</script>
+</body>
+</html>
