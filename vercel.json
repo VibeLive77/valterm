@@ -1,13 +1,7 @@
 {
   "version": 2,
   "rewrites": [
-    {
-      "source": "/api/stock",
-      "destination": "/api/stock.py"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/public/index.html"
-    }
+    { "source": "/api/stock", "destination": "/api/stock.py" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
